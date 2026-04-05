@@ -41,6 +41,8 @@ public class MeasurementActivity extends AppCompatActivity {
     // Przyciski jako zmienne klasowe, żeby mieć do nich dostęp wszędzie
     private Button btnStart;
     private Button btnInstruction;
+    private RealtimeGraphView graphView;
+    // Usunięto całkowicie txtLiveBpm
 
 
     @Override
@@ -54,6 +56,7 @@ public class MeasurementActivity extends AppCompatActivity {
         // Uwaga: zmieniłem ID przycisku start w XML na bardziej logiczne
         btnStart = findViewById(R.id.btnStartMeasurement);
         btnInstruction = findViewById(R.id.btnShowInstruction);
+        graphView = findViewById(R.id.realtimeGraph);
 
         // 2. Sprawdzenie uprawnień i start kamery
         if (checkCameraPermission()) {
@@ -62,6 +65,7 @@ public class MeasurementActivity extends AppCompatActivity {
             requestCameraPermission();
         }
 
+        btnInstruction.setOnClickListener(v -> showInstructionDialog());
         // 3. OBSŁUGA PRZYCISKU INSTRUKCJI (NAPRAWIONA)
         btnInstruction.setOnClickListener(v -> {
             // Po kliknięciu ma się TYLKO pokazać okienko.
@@ -71,7 +75,10 @@ public class MeasurementActivity extends AppCompatActivity {
 
         // 4. OBSŁUGA PRZYCISKU START (NAPRAWIONA)
         btnStart.setOnClickListener(v -> {
-            // Ten przycisk powinien działać ZAWSZE.
+            // ZMIANA: Zamiast GONE jest INVISIBLE. Przycisk znika, ale trzyma puste miejsce,
+            // dzięki czemu ekran i wykres nie przeskakują.
+            btnStart.setVisibility(View.INVISIBLE);
+            btnInstruction.setVisibility(View.INVISIBLE);
 
             // Ukrywamy OBA przyciski, żeby nie przeszkadzały podczas pomiaru
             btnStart.setVisibility(View.GONE);
@@ -83,6 +90,20 @@ public class MeasurementActivity extends AppCompatActivity {
             // Dajemy chwilę na ustabilizowanie palca przed startem odliczania
             viewFinder.postDelayed(() -> startTimer(), 1000);
         });
+
+        // --- ANIMACJA ODDYCHAJĄCEGO OKRĘGU ---
+        View targetView = findViewById(R.id.roiTarget);
+        android.animation.ObjectAnimator scaleX = android.animation.ObjectAnimator.ofFloat(targetView, "scaleX", 1f, 1.2f, 1f);
+        android.animation.ObjectAnimator scaleY = android.animation.ObjectAnimator.ofFloat(targetView, "scaleY", 1f, 1.2f, 1f);
+
+        scaleX.setRepeatCount(android.animation.ValueAnimator.INFINITE);
+        scaleY.setRepeatCount(android.animation.ValueAnimator.INFINITE);
+
+        scaleX.setDuration(4000);
+        scaleY.setDuration(4000);
+
+        scaleX.start();
+        scaleY.start();
     }
 
     // --- Metoda wyświetlająca okienko z instrukcją ---
@@ -130,6 +151,25 @@ public class MeasurementActivity extends AppCompatActivity {
                                 .setBackpressureStrategy(androidx.camera.core.ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                                 .setTargetResolution(new android.util.Size(640, 480))
                                 .build();
+
+                // ZMIANA: Obsługa nowego interfejsu (z flagą isPeak) i wyrzucenie kodu od txtLiveBpm
+                imageAnalysis.setAnalyzer(ContextCompat.getMainExecutor(this), new PulseAnalyzer(new PulseAnalyzer.PulseListener() {
+
+                    @Override
+                    public void onPulseDetected(int bpm) {
+                        currentHeartRate = bpm;
+                    }
+
+                    @Override
+                    public void onSignalUpdate(double signalValue, boolean isPeak) {
+                        runOnUiThread(() -> {
+                            if (graphView != null) {
+                                // Wysyłamy wartość i informację, czy rysować kropkę!
+                                graphView.addDataPoint((float) signalValue, isPeak);
+                            }
+                        });
+                    }
+                }));
 
                 imageAnalysis.setAnalyzer(ContextCompat.getMainExecutor(this), new HeartRateAnalyzer());
                 CameraSelector cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA;
