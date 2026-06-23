@@ -1,3 +1,10 @@
+Instalacja
+
+1. Przejdź do zakładki **[Releases](https://github.com/Kamczysk/Heartbeat_Balance/releases)** po prawej stronie repozytorium.
+2. Pobierz najnowszy plik bezpośrednio na swój telefon z systemem Android.
+3. Otwórz pobrany plik. Jeśli system wyświetli komunikat o zabezpieczeniach, zezwól na Instalowanie aplikacji z nieznanych źródeł.
+
+
 An Android application that analyzes heart rate data to determine stress levels using Photoplethysmography.
 
 The application uses the smartphone's camera and flashlight to detect blood volume changes in the fingertip.
